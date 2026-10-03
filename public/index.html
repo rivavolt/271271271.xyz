@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>271 271 271</title>
+<meta name="description" content="Two. Seven. One. Again.">
+<style>
+  :root{--o:#ff7a00;--t:#0f6b7d;--p:#ff3d8b;--cream:#fff2dc;--ink:#14110f}
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;background:var(--cream);color:var(--ink);overflow:hidden;font-family:"Helvetica Neue",Arial,sans-serif}
+  #hero{position:fixed;inset:-10%;background:url(hero.jpg) center/cover;animation:spin 90s linear infinite;mix-blend-mode:multiply;opacity:.9}
+  @keyframes spin{to{transform:rotate(360deg) scale(1.2)}}
+  canvas{position:fixed;inset:0;width:100%;height:100%}
+  main{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none}
+  .num{display:flex;gap:.04em;font-weight:900;font-size:clamp(5rem,30vw,28rem);line-height:.8;letter-spacing:-.06em;mix-blend-mode:normal}
+  .num span{display:inline-block;-webkit-text-stroke:.02em var(--ink);color:transparent;animation:beat 2.71s cubic-bezier(.7,0,.3,1) infinite}
+  .num span:nth-child(1){animation-delay:0s;--f:var(--o)}
+  .num span:nth-child(2){animation-delay:.2s;--f:var(--t)}
+  .num span:nth-child(3){animation-delay:.4s;--f:var(--p)}
+  @keyframes beat{
+    0%,100%{color:transparent;transform:translateY(0) rotate(0)}
+    20%{color:var(--f);transform:translateY(-.08em) rotate(-3deg)}
+    55%{color:var(--f);transform:translateY(.03em) rotate(2deg)}
+    80%{color:transparent}
+  }
+  .tag{position:fixed;left:0;right:0;bottom:4vh;text-align:center;font-weight:700;letter-spacing:.5em;text-transform:uppercase;font-size:clamp(.7rem,1.6vw,1rem);background:var(--ink);color:var(--cream);width:max-content;margin:auto;padding:.7em 1.4em;transform:rotate(-1.5deg)}
+  .count{position:fixed;top:3vh;left:3vw;font-variant-numeric:tabular-nums;font-weight:700;font-size:.85rem;letter-spacing:.15em;background:var(--cream);padding:.4em .8em;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--p)}
+</style>
+</head>
+<body>
+<div id="hero"></div>
+<canvas id="c"></canvas>
+<main><div class="num" aria-label="271"><span>2</span><span>7</span><span>1</span></div></main>
+<div class="count" id="n">cycle 0</div>
+<div class="tag">two · seven · one · again</div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d');
+let W,H,dpr=Math.min(devicePixelRatio||1,2);
+function size(){W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}
+size();addEventListener('resize',size);
+const COL=['#ff7a00','#0f6b7d','#ff3d8b'];
+let mx=.5,my=.5,sx=.5,sy=.5,t0=performance.now();
+addEventListener('pointermove',e=>{mx=e.clientX/W;my=e.clientY/H});
+// Rings fly outward from the vanishing point in a 2-7-1 pattern: 2 bars, 7 dots, 1 big disc per cycle of 10 slots.
+const PERIOD=2.71; // seconds per cycle
+function ring(r,k,idx,rot){
+  const R=Math.min(W,H);
+  const m=idx%10;
+  const kind=m<2?'bar':m<9?'dot':'disc';
+  x.save();
+  x.rotate(rot);
+  x.fillStyle=x.strokeStyle=COL[idx%3];
+  const rr=r*R*.9;
+  const a=Math.min(1,r*3)*(1-Math.max(0,r-.9)*10);
+  x.globalAlpha=Math.max(0,a);
+  if(kind==='bar'){
+    x.lineWidth=rr*.06;x.lineCap='butt';
+    x.beginPath();x.arc(0,0,rr,0,Math.PI*2*(2/10)*(1+idx%3));x.stroke();
+  }else if(kind==='dot'){
+    for(let i=0;i<7;i++){
+      const th=i/7*Math.PI*2;
+      x.beginPath();x.arc(Math.cos(th)*rr,Math.sin(th)*rr,rr*.035,0,7);x.fill();
+    }
+  }else{
+    x.lineWidth=rr*.015;
+    x.beginPath();x.arc(0,0,rr,0,7);x.stroke();
+  }
+  x.restore();
+}
+function frame(now){
+  const t=(now-t0)/1000;
+  sx+=(mx-sx)*.05;sy+=(my-sy)*.05;
+  x.clearRect(0,0,W,H);
+  x.save();
+  x.translate(W*(.5+(sx-.5)*.25),H*(.5+(sy-.5)*.25));
+  const total=30, speed=t/PERIOD;
+  for(let i=total;i>=0;i--){
+    // r in 0..1 grows exponentially with phase
+    const ph=((i-(speed%1))/total);
+    const r=Math.pow(ph,2.2);
+    const idx=i+Math.floor(speed)*1;
+    ring(r,i,idx,(idx*.37)+t*.15*(idx%2?1:-1));
+  }
+  x.restore();
+  document.getElementById('n').textContent='cycle '+Math.floor(speed);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
