@@ -8,6 +8,7 @@ import gsap from 'gsap'
 import * as THREE from 'three'
 import font from './font.json'
 
+const COARSE = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
 const COL = ['#ff7a00', '#18a5bf', '#ff3d8b']
 const N = 40          // rings in flight
 const GAP = 3         // distance between rings
@@ -69,10 +70,12 @@ function Walls() {
 
 function Numeral() {
   const g = useRef()
+  const { size } = useThree()
   const parts = useRef([])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     g.current.rotation.y = Math.sin(t * 0.5) * 0.5
+    g.current.scale.setScalar(Math.min(1, (8.66 * (size.width / size.height) * 0.85) / 5.6))
     parts.current.forEach((p, i) => {
       // each digit beats in turn: 2, then 7, then 1, once per cycle
       const phase = ((t / PERIOD) % 1) * 3 - i
@@ -103,14 +106,14 @@ function Comet({ id, hue }) {
   const g = useRef()
   const cur = useRef({ x: 0, y: 0, k: 0 })
   const color = useMemo(() => new THREE.Color().setHSL(hue / 360, 1, 0.6), [hue])
-  useFrame(({ clock }, dt) => {
+  useFrame(({ clock, size }, dt) => {
     const p = net.peers.get(id)
     if (!p || !g.current) return
     const c = cur.current, f = Math.min(1, dt * 10)
     c.x += (p.x - c.x) * f
     c.y += (p.y - c.y) * f
     c.k += ((p.seen ? 1 : 0) - c.k) * Math.min(1, dt * 5)
-    g.current.position.set(c.x * 6, c.y * 3.6, 0.5 + Math.sin(clock.elapsedTime * 2 + c.x) * 0.2)
+    g.current.position.set(c.x * Math.min(6, 2.9 * (size.width / size.height)), c.y * 3.6, 0.5 + Math.sin(clock.elapsedTime * 2 + c.x) * 0.2)
     g.current.scale.setScalar(c.k)
     g.current.rotation.z = clock.elapsedTime * 2
   })
@@ -158,7 +161,7 @@ export default function App() {
   const online = net.connected ? people.length + 1 : 1
   return (
     <>
-      <Canvas camera={{ position: [0, 0, 6], fov: 60, far: 200 }} dpr={[1, 2]} onPointerDown={() => { punch(); net.click() }}>
+      <Canvas camera={{ position: [0, 0, 6], fov: 60, far: 200 }} dpr={[1, COARSE ? 1.5 : 2]} onPointerDown={() => { punch(); net.click() }}>
         <color attach="background" args={['#14110f']} />
         <fog attach="fog" args={['#14110f', 30, 105]} />
         <ambientLight intensity={0.6} />
@@ -186,7 +189,7 @@ export default function App() {
         </AnimatePresence>
         <span>{online} {online === 1 ? 'rider' : 'riders'}{net.connected ? '' : ' · offline'}</span>
       </motion.div>
-      <motion.div className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 2 }}>click = hyperspeed for everyone</motion.div>
+      <motion.div className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 2 }}>{COARSE ? 'tap = hyperspeed for everyone' : 'click = hyperspeed for everyone'}</motion.div>
       <motion.div className="tag" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', delay: 0.8 }}>two · seven · one · again</motion.div>
     </>
   )
