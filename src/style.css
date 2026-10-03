@@ -2,4 +2,7 @@
 body{font-family:"Helvetica Neue",Arial,sans-serif;color:var(--ink)}
 .count{position:fixed;top:3vh;left:3vw;font-variant-numeric:tabular-nums;font-weight:700;font-size:.85rem;letter-spacing:.15em;background:var(--cream);padding:.4em .8em;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--p)}
 .tag{position:fixed;left:50%;bottom:4vh;translate:-50% 0;font-weight:700;letter-spacing:.5em;text-transform:uppercase;font-size:clamp(.65rem,1.5vw,.95rem);background:var(--ink);color:var(--cream);padding:.7em 1.4em .7em 1.9em;white-space:nowrap;rotate:-1.5deg;border:2px solid var(--cream)}
-.hint{position:fixed;top:3vh;right:3vw;color:var(--cream);font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;opacity:.7}
+.hint{position:fixed;top:calc(3vh + 3.2rem);right:3vw;color:var(--cream);font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;opacity:.7}
+.presence{position:fixed;top:3vh;right:3vw;display:flex;align-items:center;gap:6px;background:var(--cream);padding:.4em .8em;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--t);font-weight:700;font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;max-width:60vw;flex-wrap:wrap}
+.presence i{width:12px;height:12px;border:2px solid var(--ink);border-radius:50%;display:block}
+.presence span{margin-left:.4em}

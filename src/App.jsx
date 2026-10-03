@@ -1,8 +1,9 @@
-import { Suspense, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Text3D, Center, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom, ChromaticAberration, Noise, Vignette } from '@react-three/postprocessing'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { net, connect } from './net'
 import gsap from 'gsap'
 import * as THREE from 'three'
 import font from './font.json'
@@ -97,10 +98,39 @@ function Numeral() {
   )
 }
 
+// Every other visitor flies the tunnel as a comet at the spot their pointer holds on screen.
+function Comet({ id, hue }) {
+  const g = useRef()
+  const cur = useRef({ x: 0, y: 0, k: 0 })
+  const color = useMemo(() => new THREE.Color().setHSL(hue / 360, 1, 0.6), [hue])
+  useFrame(({ clock }, dt) => {
+    const p = net.peers.get(id)
+    if (!p || !g.current) return
+    const c = cur.current, f = Math.min(1, dt * 10)
+    c.x += (p.x - c.x) * f
+    c.y += (p.y - c.y) * f
+    c.k += ((p.seen ? 1 : 0) - c.k) * Math.min(1, dt * 5)
+    g.current.position.set(c.x * 6, c.y * 3.6, 0.5 + Math.sin(clock.elapsedTime * 2 + c.x) * 0.2)
+    g.current.scale.setScalar(c.k)
+    g.current.rotation.z = clock.elapsedTime * 2
+  })
+  return (
+    <group ref={g}>
+      <mesh><icosahedronGeometry args={[0.3, 1]} /><meshBasicMaterial color={color} toneMapped={false} /></mesh>
+      <mesh position={[0, 0, 3.6]} rotation-x={Math.PI / 2}>
+        <coneGeometry args={[0.3, 7.2, 14, 1, true]} />
+        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.4} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+      </mesh>
+      <pointLight color={color} intensity={14} distance={9} />
+    </group>
+  )
+}
+
 function Rig({ onCycle }) {
   const { camera, pointer } = useThree()
   const last = useRef(0)
   useFrame(({ clock }) => {
+    net.move(pointer.x, pointer.y)
     camera.position.x += (pointer.x * 1.6 - camera.position.x) * 0.04
     camera.position.y += (pointer.y * 1.0 - camera.position.y) * 0.04
     camera.lookAt(0, 0, -20)
@@ -114,13 +144,21 @@ function Rig({ onCycle }) {
 
 export default function App() {
   const [cycle, setCycle] = useState(0)
+  const [, bump] = useState(0)
+  const people = [...net.peers].map(([id, p]) => ({ id, hue: p.hue }))
   const punch = () => {
     gsap.killTweensOf(state)
     gsap.timeline().to(state, { boost: 1, duration: 0.25, ease: 'power3.out' }).to(state, { boost: 0, duration: 1.8, ease: 'power2.inOut' })
   }
+  useEffect(() => {
+    net.onChange = () => bump((n) => n + 1)
+    net.onClick = punch
+    return connect()
+  }, [])
+  const online = net.connected ? people.length + 1 : 1
   return (
     <>
-      <Canvas camera={{ position: [0, 0, 6], fov: 60, far: 200 }} dpr={[1, 2]} onPointerDown={punch}>
+      <Canvas camera={{ position: [0, 0, 6], fov: 60, far: 200 }} dpr={[1, 2]} onPointerDown={() => { punch(); net.click() }}>
         <color attach="background" args={['#14110f']} />
         <fog attach="fog" args={['#14110f', 30, 105]} />
         <ambientLight intensity={0.6} />
@@ -129,6 +167,7 @@ export default function App() {
           <Walls />
           {Array.from({ length: N }, (_, k) => <Ring key={k} k={k} slot={k} />)}
           <Numeral />
+          {people.map((p) => <Comet key={p.id} id={p.id} hue={p.hue} />)}
         </Suspense>
         <Rig onCycle={setCycle} />
         <EffectComposer>
@@ -139,7 +178,15 @@ export default function App() {
         </EffectComposer>
       </Canvas>
       <motion.div className="count" initial={{ x: -80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', delay: 0.4 }}>cycle {cycle}</motion.div>
-      <motion.div className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 2 }}>click = hyperspeed</motion.div>
+      <motion.div className="presence" initial={{ x: 80, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', delay: 0.6 }}>
+        <AnimatePresence>
+          {people.map((p) => (
+            <motion.i key={p.id} initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} style={{ background: `hsl(${p.hue} 100% 58%)` }} />
+          ))}
+        </AnimatePresence>
+        <span>{online} {online === 1 ? 'rider' : 'riders'}{net.connected ? '' : ' · offline'}</span>
+      </motion.div>
+      <motion.div className="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} transition={{ delay: 2 }}>click = hyperspeed for everyone</motion.div>
       <motion.div className="tag" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', delay: 0.8 }}>two · seven · one · again</motion.div>
     </>
   )
